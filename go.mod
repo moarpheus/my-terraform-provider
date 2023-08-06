@@ -1,4 +1,4 @@
-module my-terraform-provider
+module terraform-provider-joke
 
 go 1.20
 

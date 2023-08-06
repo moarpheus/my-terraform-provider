@@ -1,8 +1,8 @@
 TEST?=$$(go list ./... | grep -v 'vendor')
 HOSTNAME=moarpheus.com
 NAMESPACE=home
-NAME=random_joke
-BINARY=terraform-provider-random-joke
+NAME=joke
+BINARY=terraform-provider-joke
 VERSION=0.0.1
 OS_ARCH=darwin_amd64
 
