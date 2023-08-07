@@ -1,18 +1,21 @@
-package random
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package home
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func dataSourceRandomJoke() *schema.Resource {
+func dataSourceJokes() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceJokesRead,
 		Schema: map[string]*schema.Schema{
@@ -21,10 +24,6 @@ func dataSourceRandomJoke() *schema.Resource {
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"id": &schema.Schema{
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
 						"type": &schema.Schema{
 							Type:     schema.TypeString,
 							Computed: true,
@@ -37,6 +36,10 @@ func dataSourceRandomJoke() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
+						"id": &schema.Schema{
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -45,43 +48,32 @@ func dataSourceRandomJoke() *schema.Resource {
 }
 
 func dataSourceJokesRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
-	client := &http.Client{}
-	var data map[string]interface{}
-
-	resp, err := client.Get("https://official-joke-api.appspot.com/random_joke")
-
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/random_joke", "https://official-joke-api.appspot.com"), nil)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	r, err := client.Do(req)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	defer r.Body.Close()
 
+	data := make(map[string]interface{}, 0)
+
+	err = json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	jokes := make([]map[string]interface{}, 0)
-	err = json.Unmarshal(body, &data)
 
-	if err != nil {
-		err = fmt.Errorf("cannot unmarshal json of API response: %v", err)
-	} else if data["id"] == "" {
-		err = fmt.Errorf("missing result key in API response: %v", err)
-	}
-
-	if err := d.Set("jokes", jokes); err != nil {
-		return diag.FromErr(err)
-	}
-
-	outputs := make(map[string]interface{})
-	outputs["id"] = data["id"]
-	outputs["type"] = data["type"]
-	outputs["setup"] = data["setup"]
-	outputs["punchline"] = data["punchline"]
-
-	jokes = append(jokes, outputs)
+	jokes = append(jokes, data)
 
 	if err := d.Set("jokes", jokes); err != nil {
 		return diag.FromErr(err)
