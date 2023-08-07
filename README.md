@@ -1,11 +1,5 @@
 # Terraform Provider Random Joke
 
-Run the following command to build the provider
-
-```shell
-go build -o terraform-provider-random-joke
-```
-
 ## Test sample configuration
 
 First, build and install the provider.
